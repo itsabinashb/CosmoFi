@@ -50,7 +50,7 @@ contract Main is PriceFeed, Ownable {
   constructor(address initialOwner) Ownable(initialOwner) {}
 
   function depositLiquidity() external payable {
-    if (msg.value != 0.050 ether) {
+    if (msg.value != 0.05 ether) {
       revert Provide_Enough_Eth();
     }
     LPs[msg.sender] = msg.value;
@@ -106,6 +106,7 @@ contract Main is PriceFeed, Ownable {
     int256 currentValue = int256(borrowedAmount) / currentPrice; // the valu in terms of eth
     int256 priceDifference = currentValue - addressToTraderUtils[msg.sender].currentValue; // PnL
     if (currentValue > addressToTraderUtils[msg.sender].currentValue) {
+      addressToTraderUtils[msg.sender].tradeStatus = TradeStatus.Close;
       // Deduct from LPs ⭐️
       liquidity - uint256(priceDifference);
       openInterest -= borrowedAmount; // Updating open interest after closing the position
@@ -114,6 +115,7 @@ contract Main is PriceFeed, Ownable {
         revert Profit_Sending_Failed_For_Closing_Long_Position();
       }
     } else if (currentValue < addressToTraderUtils[msg.sender].currentValue) {
+      addressToTraderUtils[msg.sender].tradeStatus = TradeStatus.Close;
       int256 collateral = int256(addressToTraderUtils[msg.sender].collateral);
       int256 refundableAmountWithoutFee = collateral - priceDifference;
       int256 refundableAmountAfterFeeDeduction = refundableAmountWithoutFee -
