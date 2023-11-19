@@ -42,6 +42,8 @@ If price decreases then current value will be less than previous current value, 
 
 Trader can increase their Size of position and collateral by calling this function: `increasePositionSizeAndCollateralForLong()`, to do this he/she just will have to deposit ether, the protocol will credit some amount of ether which will be calculated by following prefixed borrow percentage based on deposited amount which will increase their collateral as well as size.
 
+I did not use *Leverage* logic here.
+
 **What actors are involved? Is there a keeper? What is the admin tasked with?**
 
 *Actors involved*: Liquidity providers, Traders, fixed allowed borrow percentage, minimum collateral that is accepted, maximum utilization percentage of liquidity pool, Long direction only.
@@ -59,3 +61,10 @@ Trader can increase their Size of position and collateral by calling this functi
 That's why I could not implement the logic of recording real time net amount of liquidity pool.
 
 2. For this logic: *Traders cannot utilize more than a configured percentage of the deposited liquidity.* what factors should I need to keep in ming while setting the percentage ??
+
+**Any pertinent formulas used?**
+
+Yes, to calculate open interest I used mentioned condition :
+```
+totalOpenInterest < (depositedLiquidity * maxUtilizationPercentage)
+```
