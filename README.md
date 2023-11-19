@@ -13,18 +13,22 @@ struct TraderUtils {
     PositionStatus positionStatus;
   }
 ```
+
 We are recording open interest in this function.
 
 To close the position trader need to call `closePositionForLong()`, to avoid reentrancy we deleting the trader from contract. We are calculating PnL by substracting the current value (previous when they opened position) from current value (in current time when they wanna close the position):
 `int256 priceDifference = currentValue - addressToTraderUtils[msg.sender].currentValue;`
-current value is calculated like this: 
+current value is calculated like this:
+
 ```solidity
 int256 currentPrice = getPrice(); // Current BTC value in terms of ETH from chainlink pricefeed
 uint256 borrowedAmount = addressToTraderUtils[msg.sender].borrowedAmount; // Getting borrowed amount while opening the positio
 int256 currentValue = int256(borrowedAmount) / currentPrice; // the valu in terms of eth
 ```
+
 Now if current value is greter than previous current value then trader is in profit, so the `priceDifference` will be credited to his account, this will happen if price move upward.
 If price decreases then current value will be less than previous current value, in that case the priceDifference will be deducted from the trader's collateral. We are having 1% liquidity fee of their collateral so it will be deducted as well, after that we are sending the rest of refundable amount to the trader:
+
 ```solidity
  int256 refundableAmountWithoutFee = collateral - priceDifference;
       int256 refundableAmountAfterFeeDeduction = refundableAmountWithoutFee -
@@ -40,3 +44,18 @@ Trader can increase their Size of position and collateral by calling this functi
 
 **What actors are involved? Is there a keeper? What is the admin tasked with?**
 
+*Actors involved*: Liquidity providers, Traders, fixed allowed borrow percentage, minimum collateral that is accepted, maximum utilization percentage of liquidity pool, Long direction only.
+
+*Keeper*: There is no keeper.
+
+*Admin task*: For now admin can only set price feed address of BTC.
+
+**What are the known risk/issues?**
+
+1. I could not understand that is it necessary to use USD while calculating the net PnL using this formula:
+```solidity
+(currentValueOfPosition*openInterestInTermsOfETH) - openInterestInTermsOfUSD;
+```
+That's why I could not implement the logic of recording real time net amount of liquidity pool.
+
+2. For this logic: *Traders cannot utilize more than a configured percentage of the deposited liquidity.* what factors should I need to keep in ming while setting the percentage ??

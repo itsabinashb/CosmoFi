@@ -146,3 +146,6 @@ contract Main is PriceFeed, Ownable {
     _;
   }
 }
+// Net amount of liquidity pool was not tracked.
+// During calculation of net PnL is it necessary to use USD here:
+// (currentValueOfPosition*openInterestInTermsOfETH) - openInterestInTermsOfUSD
