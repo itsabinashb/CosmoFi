@@ -3,6 +3,9 @@ pragma solidity 0.8.20;
 import './Aggregator/PriceFeed.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+// This may be a issue that this is contract is taking ETH while adding cliquidity and also taking ETH while opening position. It might be better to have different 
+// contract only for taking liquidity.
+
 contract Main is PriceFeed, Ownable {
   error Provide_Enough_Eth();
   error Not_LP(address _caller);

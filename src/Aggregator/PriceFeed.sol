@@ -13,11 +13,11 @@ abstract contract PriceFeed {
     
     (
             /* uint80 roundID */,
-            int answer,
+            int answer,             // What is the decimal of returned value? Is it 18? See Code walk note to understand better ⭐️
             /*uint startedAt*/,
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = aggregator.latestRoundData();
-    return answer;
+    return answer;  // I might need to devide it by 1e18
   }
 }
