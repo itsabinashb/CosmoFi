@@ -11,6 +11,8 @@ contract Main is Ownable, PriceFeed {
   error Not_LP();
   error Insufficient_amount_to_withdraw();
   error Max_Utilization_Limit_Reached();
+  error Insufficient_size();
+  error Insufficient_collateral();
 
   IERC20 private dai;
   uint256 minCollateral = 100;
@@ -26,6 +28,7 @@ contract Main is Ownable, PriceFeed {
     uint256 collateral;
     int256 sizeInBTC;
     int256 sizeInUSD;
+    int256 sizeInDai;
   }
 
   mapping(address => TraderUtils) traderUtils;
@@ -56,12 +59,12 @@ contract Main is Ownable, PriceFeed {
       revert Insufficient_balance();
     }
     dai.transferFrom(msg.sender, address(this), _amount);
-    uint256 size = _amount * 5;
+    int256 size = int256(_amount) * 5;
     int256 currentBTCPriceInUSD = getPriceForBTC() / usdDecimal; // here we get BTC price in USD, dividing it by 1e8 to get actual value
     int256 daiToUSD = getPriceForDAI() / daiDecimal; // here we get DAI price in USD, dividing it by 1e8 to get actual value
     int256 sizeInUSD = int(size) * daiToUSD;
     int256 sizeInBTC = currentBTCPriceInUSD / int(sizeInUSD);
-    traderUtils[msg.sender] = TraderUtils(_amount, sizeInBTC, sizeInUSD);
+    traderUtils[msg.sender] = TraderUtils(_amount, sizeInBTC, sizeInUSD, size);
     isTrader[msg.sender] = 1;
     OPEN_INTEREST += uint256(size);
   }
@@ -101,6 +104,44 @@ contract Main is Ownable, PriceFeed {
       revert Max_Utilization_Limit_Reached();
     }
     dai.transferFrom(address(this), msg.sender, amount);
+  }
+
+// Decreasing position
+  function decreasePosition(uint256 _amount) external onlyTrader {
+    uint256 amount = _amount / decimal;
+    if (int256(amount) > traderUtils[msg.sender].sizeInDai) {
+      revert Insufficient_size();
+    }
+    int256 daiToUSD = getPriceForDAI() / daiDecimal;
+    int256 amountInUSD = int256(amount) * daiToUSD;
+    // Here we already saved the size in USD for all BTC they have in TraderUtils struct
+    int256 sizeInBTC = traderUtils[msg.sender].sizeInBTC; // Getting the size in BTC for this trader
+    int256 currentBTCInUSD = getPriceForBTC() / usdDecimal; //
+    int256 currentSizeInUSD = sizeInBTC * currentBTCInUSD; // Getting the current size in USD for all the BTC this trader has
+    int256 PnL = currentSizeInUSD - traderUtils[msg.sender].sizeInUSD; // Current Market value - Average position size
+    int256 realizedPnL = (PnL * amountInUSD) / traderUtils[msg.sender].sizeInUSD;
+    int256 realizedPnLInDai = realizedPnL / daiToUSD;
+    int256 updatedSizeInDai = traderUtils[msg.sender].sizeInDai - int256(amount);
+    int256 updatedSizeInUSD = traderUtils[msg.sender].sizeInUSD - amountInUSD;
+    int256 BTC = amountInUSD / currentBTCInUSD;
+    int256 updatedSizeInBTC = traderUtils[msg.sender].sizeInBTC - BTC;
+    traderUtils[msg.sender].sizeInDai = updatedSizeInDai;
+    traderUtils[msg.sender].sizeInUSD = updatedSizeInUSD;
+    traderUtils[msg.sender].sizeInBTC = updatedSizeInBTC;
+    // address(this) SHOULD BE REPLACED BY A SEPARATE CONTRACT NAMED LiquidityValult
+    if (realizedPnL > 0) {
+      dai.transferFrom(address(this), msg.sender, uint256(realizedPnLInDai));
+    } else if (realizedPnL < 0) {
+      dai.transferFrom(msg.sender, address(this), uint256(realizedPnLInDai));
+    }
+  }
+
+  //decrease collateral
+  function decreaseCollateral(uint256 _collateral) external onlyTrader {
+    if (_collateral > traderUtils[msg.sender].collateral){
+      revert Insufficient_collateral();
+    }
+    traderUtils[msg.sender].collateral -= _collateral;
   }
 
   // helper functions
