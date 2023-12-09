@@ -144,6 +144,12 @@ contract Main is Ownable, PriceFeed {
     traderUtils[msg.sender].collateral -= _collateral;
   }
 
+  //liquidate
+  function liquidate() external onlyTrader {
+    dai.transferFrom(address(this), msg.sender, traderUtils[msg.sender].collateral);
+    delete traderUtils[msg.sender];
+  }
+
   // helper functions
   function setDaiAddress(IERC20 _dai) external onlyOwner {
     dai = IERC20(_dai);
